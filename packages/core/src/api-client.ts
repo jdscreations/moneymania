@@ -15,7 +15,7 @@ export interface ApiClientOptions {
   /** "" for same-origin web requests, the API URL on mobile. */
   baseUrl: string;
   /** Extra headers per request, e.g. the session cookie on mobile. */
-  headers?: () => Record<string, string>;
+  headers?: () => Record<string, string> | Promise<Record<string, string>>;
 }
 
 /** One typed client used by both the web and mobile apps. */
@@ -24,7 +24,7 @@ export function createApiClient({ baseUrl, headers }: ApiClientOptions) {
     const res = await fetch(`${baseUrl}${path}`, {
       method,
       credentials: "include",
-      headers: { "content-type": "application/json", ...headers?.() },
+      headers: { "content-type": "application/json", ...(await headers?.()) },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
     if (!res.ok) {

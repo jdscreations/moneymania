@@ -12,5 +12,5 @@ export default function Index() {
       </View>
     );
   }
-  return <Redirect href={session ? "/home" : "/sign-in"} />;
+  return <Redirect href={session ? "/today" : "/sign-in"} />;
 }

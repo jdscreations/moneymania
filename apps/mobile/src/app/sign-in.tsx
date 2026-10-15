@@ -22,7 +22,7 @@ export default function SignIn() {
         : await authClient.signIn.email({ email, password });
     setBusy(false);
     if (result.error) setError(result.error.message ?? "Something went wrong");
-    else router.replace("/home");
+    else router.replace("/today");
   }
 
   return (

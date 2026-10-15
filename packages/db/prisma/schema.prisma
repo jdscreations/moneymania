@@ -1,0 +1,411 @@
+// MoneyMania database schema.
+// Money is always stored as integer paise (BigInt) and rates as basis points (17% = 1700).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------- Auth (tables required by Better Auth) ----------
+
+model User {
+  id            String    @id
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  currency      String    @default("INR")
+  timezone      String    @default("Asia/Kolkata")
+  locale        String    @default("en-IN")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  sessions      Session[]
+  authAccounts  Account[]
+  moneyAccounts MoneyAccount[]
+  categories    Category[]
+  transactions  Transaction[]
+  budgets       Budget[]
+  bills         Bill[]
+  emis          Emi[]
+  purchaseCases PurchaseCase[]
+  reminders     Reminder[]
+  consents      Consent[]
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("auth_accounts")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verifications")
+}
+
+// ---------- Money ----------
+
+enum MoneyAccountType {
+  cash
+  bank
+  upi
+  credit_card
+  wallet
+}
+
+model MoneyAccount {
+  id                  String           @id @default(cuid())
+  userId              String
+  user                User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type                MoneyAccountType
+  name                String
+  bankCode            String?
+  openingBalancePaise BigInt           @default(0)
+  archivedAt          DateTime?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  transactions Transaction[]
+  bills        Bill[]
+  emis         Emi[]
+
+  @@index([userId])
+  @@map("money_accounts")
+}
+
+enum CategoryKind {
+  income
+  expense
+}
+
+model Category {
+  id        String       @id @default(cuid())
+  /// Null for the built-in default categories shared by everyone.
+  userId    String?
+  user      User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  kind      CategoryKind
+  icon      String?
+  parentId  String?
+  parent    Category?    @relation("CategoryTree", fields: [parentId], references: [id])
+  children  Category[]   @relation("CategoryTree")
+  createdAt DateTime     @default(now())
+
+  transactions Transaction[]
+  budgets      Budget[]
+
+  @@index([userId])
+  @@map("categories")
+}
+
+enum TransactionKind {
+  income
+  expense
+  transfer
+  refund
+}
+
+enum IncomeSource {
+  salary
+  freelance
+  gig
+  business
+  cash
+  interest
+  other
+}
+
+model Transaction {
+  id           String          @id @default(cuid())
+  userId       String
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountId    String
+  account      MoneyAccount    @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  categoryId   String?
+  category     Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  kind         TransactionKind
+  amountPaise  BigInt
+  occurredOn   DateTime        @db.Date
+  incomeSource IncomeSource?
+  note         String?
+  tags         String[]
+  orderId      String?
+  order        Order?          @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@index([userId, occurredOn])
+  @@map("transactions")
+}
+
+model Budget {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  /// First day of the budget month.
+  month      DateTime @db.Date
+  limitPaise BigInt
+
+  @@unique([userId, categoryId, month])
+  @@map("budgets")
+}
+
+// ---------- Bills and EMIs ----------
+
+model Bill {
+  id          String        @id @default(cuid())
+  userId      String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  amountPaise BigInt
+  accountId   String?
+  account     MoneyAccount? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  /// iCal RRULE, e.g. "FREQ=MONTHLY;BYMONTHDAY=5".
+  recurrence  String
+  nextDueOn   DateTime      @db.Date
+  autopay     Boolean       @default(false)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([userId, nextDueOn])
+  @@map("bills")
+}
+
+enum EmiKind {
+  card_merchant
+  card_conversion
+  loan
+  bnpl
+}
+
+enum EmiStatus {
+  active
+  foreclosed
+  cancelled
+  closed
+}
+
+model Emi {
+  id                 String        @id @default(cuid())
+  userId             String
+  user               User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountId          String?
+  account            MoneyAccount? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  kind               EmiKind
+  lender             String
+  principalPaise     BigInt
+  annualRateBps      Int
+  tenureMonths       Int
+  startOn            DateTime      @db.Date
+  processingFeePaise BigInt        @default(0)
+  bankRuleId         String?
+  bankRule           BankEmiRule?  @relation(fields: [bankRuleId], references: [id])
+  status             EmiStatus     @default(active)
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  installments  EmiInstallment[]
+  purchaseCases PurchaseCase[]
+
+  @@index([userId])
+  @@map("emis")
+}
+
+model EmiInstallment {
+  id             String    @id @default(cuid())
+  emiId          String
+  emi            Emi       @relation(fields: [emiId], references: [id], onDelete: Cascade)
+  number         Int
+  dueOn          DateTime  @db.Date
+  principalPaise BigInt
+  interestPaise  BigInt
+  gstPaise       BigInt
+  paidOn         DateTime? @db.Date
+
+  @@unique([emiId, number])
+  @@map("emi_installments")
+}
+
+model BankEmiRule {
+  id                     String   @id @default(cuid())
+  bankCode               String
+  emiKind                EmiKind
+  foreclosureFeeBps      Int
+  gstBps                 Int      @default(1800)
+  disputeWindowDays      Int?
+  cancelOnFullRefundOnly Boolean  @default(true)
+  /// Customer care, nodal officer and ombudsman contacts in escalation order.
+  escalationContacts     Json?
+  lastCheckedOn          DateTime @db.Date
+
+  emis Emi[]
+
+  @@unique([bankCode, emiKind])
+  @@map("bank_emi_rules")
+}
+
+// ---------- EMI refund tracker ----------
+
+enum Merchant {
+  amazon_in
+  flipkart
+  other
+}
+
+enum CaseStatus {
+  open
+  resolved
+}
+
+model PurchaseCase {
+  id                String     @id @default(cuid())
+  userId            String
+  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emiId             String?
+  emi               Emi?       @relation(fields: [emiId], references: [id], onDelete: SetNull)
+  merchant          Merchant
+  chargePaise       BigInt
+  chargedOn         DateTime   @db.Date
+  disputeDeadlineOn DateTime?  @db.Date
+  status            CaseStatus @default(open)
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  orders Order[]
+  events CaseEvent[]
+
+  @@index([userId])
+  @@map("purchase_cases")
+}
+
+enum OrderStatus {
+  kept
+  cancelled
+  return_requested
+  returned
+}
+
+model Order {
+  id              String       @id @default(cuid())
+  caseId          String
+  case            PurchaseCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  merchantOrderId String?
+  item            String
+  amountPaise     BigInt
+  status          OrderStatus  @default(kept)
+  refundPaise     BigInt       @default(0)
+  refundPostedOn  DateTime?    @db.Date
+
+  transactions Transaction[]
+
+  @@index([caseId])
+  @@map("orders")
+}
+
+enum CaseEventType {
+  call
+  email
+  sr_number
+  promise
+  escalation
+  note
+}
+
+model CaseEvent {
+  id        String        @id @default(cuid())
+  caseId    String
+  case      PurchaseCase  @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  at        DateTime      @default(now())
+  type      CaseEventType
+  reference String?
+  note      String?
+
+  @@index([caseId])
+  @@map("case_events")
+}
+
+// ---------- Reminders and consent ----------
+
+enum ReminderSubject {
+  bill
+  emi
+  purchase_case
+}
+
+enum ReminderChannel {
+  push
+  email
+  in_app
+}
+
+model Reminder {
+  id          String          @id @default(cuid())
+  userId      String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subjectType ReminderSubject
+  subjectId   String
+  remindOn    DateTime
+  channel     ReminderChannel
+  sentAt      DateTime?
+
+  @@index([remindOn, sentAt])
+  @@map("reminders")
+}
+
+model Consent {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  purpose     String
+  grantedAt   DateTime  @default(now())
+  withdrawnAt DateTime?
+
+  @@index([userId])
+  @@map("consents")
+}

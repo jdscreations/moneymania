@@ -35,11 +35,13 @@ export const GET = handle(async (req: Request) => {
   let pushes = 0;
 
   for (const [userId, list] of byUser) {
-    const user = await prisma.user.findUnique({ where: { id: userId }, include: { pushTokens: true } });
+    const user = await prisma.user.findUnique({ where: { id: userId }, include: { pushTokens: true, consents: { where: { withdrawnAt: null } } } });
     if (!user || user.deletedAt) continue;
 
+    // Only remind on the channels the user agreed to.
+    const agreed = new Set(user.consents.map((c) => c.purpose));
     const forEmail: DueItem[] = [];
-    for (const i of list) if (await claim(i, "email")) forEmail.push(i);
+    if (agreed.has("email_reminders")) for (const i of list) if (await claim(i, "email")) forEmail.push(i);
     newReminders += forEmail.length;
     if (forEmail.length > 0) {
       const lines = forEmail.map(reminderLine);
@@ -47,7 +49,7 @@ export const GET = handle(async (req: Request) => {
       if (sent) emails++;
     }
 
-    const tokens = user.pushTokens.map((t) => t.token);
+    const tokens = agreed.has("push_reminders") ? user.pushTokens.map((t) => t.token) : [];
     if (tokens.length > 0) {
       const forPush: DueItem[] = [];
       for (const i of list) if (await claim(i, "push")) forPush.push(i);

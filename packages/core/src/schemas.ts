@@ -189,3 +189,13 @@ export const closeEmiInput = z.object({
   reference: z.string().trim().max(60).nullish(),
 });
 export type CloseEmiInput = z.input<typeof closeEmiInput>;
+
+/** "data_processing" must be granted to use MoneyMania; the reminder purposes are optional. */
+export const consentPurposes = ["data_processing", "email_reminders", "push_reminders"] as const;
+export type ConsentPurpose = (typeof consentPurposes)[number];
+
+export const consentInput = z.object({
+  purpose: z.enum(consentPurposes),
+  granted: z.boolean(),
+});
+export type ConsentInput = z.input<typeof consentInput>;

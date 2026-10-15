@@ -4,7 +4,7 @@ import type { Paise } from "./money";
 import type { PeriodSummary } from "./summary";
 import type { BillFrequency } from "./bills";
 import type { PrepaymentResult } from "./emi";
-import type { caseEventTypes, emiKinds, incomeSources, merchants, moneyAccountTypes, transactionKinds } from "./schemas";
+import type { caseEventTypes, consentPurposes, emiKinds, incomeSources, merchants, moneyAccountTypes, transactionKinds } from "./schemas";
 
 /** JSON shapes returned by the MoneyMania API. Amounts are paise as plain numbers. */
 export interface MoneyAccountDto {
@@ -155,4 +155,25 @@ export interface CaseDetailDto extends CaseDto {
   orders: CaseOrderDto[];
   events: CaseEventDto[];
   escalation: EscalationStep[];
+}
+
+/** The user's own numbers, used to prefill the calculators. */
+export interface CalculatorContextDto {
+  /** Full months (out of the last three) that have entries; averages are over these. */
+  months: number;
+  avgMonthlyIncomePaise: Paise;
+  avgMonthlySpendPaise: Paise;
+  /** Money in cash, bank, UPI and wallet accounts today (credit cards excluded). */
+  liquidPaise: Paise;
+  /** Next installment of every active EMI, including GST. */
+  emiMonthlyPaise: Paise;
+  /** Active bills spread out to a monthly amount. */
+  billsMonthlyPaise: Paise;
+}
+
+export interface ConsentDto {
+  purpose: (typeof consentPurposes)[number];
+  granted: boolean;
+  /** When the current consent was given; null if not given or withdrawn. */
+  grantedAt: string | null;
 }

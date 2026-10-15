@@ -1,13 +1,10 @@
-import { Redirect, router } from "expo-router";
-import { Alert, Pressable, Text } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { router } from "expo-router";
+import { Alert, Pressable, Text, View } from "react-native";
 import { authClient } from "@/lib/auth-client";
 import { colors, ui } from "@/lib/theme";
 
-export default function Home() {
-  const { data: session, isPending } = authClient.useSession();
-  if (isPending) return null;
-  if (!session) return <Redirect href="/sign-in" />;
+export default function Settings() {
+  const { data: session } = authClient.useSession();
 
   async function signOut() {
     await authClient.signOut();
@@ -29,17 +26,14 @@ export default function Home() {
   }
 
   return (
-    <SafeAreaView style={ui.screen}>
-      <Text style={ui.title}>Hi, {session.user.name}</Text>
-      <Text style={ui.body}>
-        You are signed in as {session.user.email}. Your daily log arrives in the next milestone.
-      </Text>
+    <View style={[ui.page, { flex: 1 }]}>
+      <Text style={ui.body}>Signed in as {session?.user.email}</Text>
       <Pressable style={ui.button} onPress={signOut}>
         <Text style={ui.buttonText}>Sign out</Text>
       </Pressable>
       <Pressable onPress={deleteAccount}>
-        <Text style={[ui.link, { color: colors.danger }]}>Delete account</Text>
+        <Text style={[ui.link, { color: colors.danger }]}>Delete account and data</Text>
       </Pressable>
-    </SafeAreaView>
+    </View>
   );
 }

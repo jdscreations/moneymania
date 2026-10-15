@@ -5,7 +5,9 @@ export default function RootLayout() {
   return (
     <>
       <StatusBar style="dark" />
-      <Stack screenOptions={{ headerShown: false }} />
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="add-entry" options={{ presentation: "modal", headerShown: true, title: "Add entry" }} />
+      </Stack>
     </>
   );
 }

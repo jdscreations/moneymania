@@ -101,6 +101,7 @@ describe("EMIs", () => {
 describe("upcoming and reminders", () => {
   it("lists what is due soon and reminds once per due date", async () => {
     const api = await signUp();
+    await api.consents.set({ purpose: "email_reminders", granted: true });
     const today = todayIn();
     await api.bills.create({ name: "Electricity", amountPaise: 180_000, frequency: "monthly", nextDueOn: addDays(today, 2), remindDaysBefore: 3 });
     await api.bills.create({ name: "Netflix", amountPaise: 64_900, frequency: "monthly", nextDueOn: addDays(today, 20) });

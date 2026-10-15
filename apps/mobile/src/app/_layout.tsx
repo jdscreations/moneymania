@@ -11,6 +11,7 @@ export default function RootLayout() {
         <Stack.Screen name="emi/[id]" options={{ headerShown: true, title: "EMI" }} />
         <Stack.Screen name="add-bill" options={{ presentation: "modal", headerShown: true, title: "Add bill" }} />
         <Stack.Screen name="add-emi" options={{ presentation: "modal", headerShown: true, title: "Add EMI" }} />
+        <Stack.Screen name="calculators" options={{ headerShown: true, title: "Calculators" }} />
         <Stack.Screen name="case/[id]" options={{ headerShown: true, title: "Refund case" }} />
         <Stack.Screen name="add-case" options={{ presentation: "modal", headerShown: true, title: "Open a refund case" }} />
       </Stack>

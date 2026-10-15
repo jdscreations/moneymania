@@ -1,6 +1,6 @@
-import type { BillDto, CaseDetailDto, CaseDto, BudgetDto, CategoryDto, EmiDetailDto, EmiDto, MoneyAccountDto, PrepaymentDto, SummaryDto, TransactionDto, UpcomingDto } from "./api-types";
+import type { BillDto, CalculatorContextDto, CaseDetailDto, ConsentDto, CaseDto, BudgetDto, CategoryDto, EmiDetailDto, EmiDto, MoneyAccountDto, PrepaymentDto, SummaryDto, TransactionDto, UpcomingDto } from "./api-types";
 import type { IsoDate, Period } from "./dates";
-import type { BillInput, CaseEventInput, CaseInput, CaseUpdate, CloseEmiInput, OrderInput, OrderUpdate, BudgetInput, CategoryInput, EmiInput, MoneyAccountInput, PayBillInput, PayInstallmentInput, PrepaymentInput, TransactionInput } from "./schemas";
+import type { BillInput, CaseEventInput, ConsentInput, CaseInput, CaseUpdate, CloseEmiInput, OrderInput, OrderUpdate, BudgetInput, CategoryInput, EmiInput, MoneyAccountInput, PayBillInput, PayInstallmentInput, PrepaymentInput, TransactionInput } from "./schemas";
 
 export class ApiError extends Error {
   constructor(
@@ -18,6 +18,13 @@ export interface ApiClientOptions {
   headers?: () => Record<string, string> | Promise<Record<string, string>>;
 }
 
+/** Download paths, used directly as links on the web. */
+export const exportPaths = {
+  transactions: (from: IsoDate, to: IsoDate, format: "csv" | "html") => `/api/export/transactions?from=${from}&to=${to}&format=${format}`,
+  purchaseCase: (id: string, format: "csv" | "html") => `/api/export/cases/${id}?format=${format}`,
+  everything: "/api/export/me",
+};
+
 /** One typed client used by both the web and mobile apps. */
 export function createApiClient({ baseUrl, headers }: ApiClientOptions) {
   async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
@@ -34,7 +41,19 @@ export function createApiClient({ baseUrl, headers }: ApiClientOptions) {
     return (res.status === 204 ? undefined : await res.json()) as T;
   }
 
+  /** Raw text of a download, such as a CSV or HTML report. */
+  async function text(path: string): Promise<string> {
+    const res = await fetch(`${baseUrl}${path}`, { credentials: "include", headers: { ...(await headers?.()) } });
+    if (!res.ok) throw new ApiError(res.status, res.statusText);
+    return res.text();
+  }
+
   return {
+    exports: {
+      transactions: (from: IsoDate, to: IsoDate, format: "csv" | "html") => text(exportPaths.transactions(from, to, format)),
+      purchaseCase: (id: string, format: "csv" | "html") => text(exportPaths.purchaseCase(id, format)),
+      everything: () => text(exportPaths.everything),
+    },
     accounts: {
       list: () => call<MoneyAccountDto[]>("GET", "/api/accounts"),
       create: (input: MoneyAccountInput) => call<MoneyAccountDto>("POST", "/api/accounts", input),
@@ -84,6 +103,11 @@ export function createApiClient({ baseUrl, headers }: ApiClientOptions) {
       removeOrder: (id: string, orderId: string) => call<CaseDetailDto>("DELETE", `/api/cases/${id}/orders/${orderId}`),
       addEvent: (id: string, input: CaseEventInput) => call<CaseDetailDto>("POST", `/api/cases/${id}/events`, input),
       closeEmi: (id: string, input: CloseEmiInput) => call<CaseDetailDto>("POST", `/api/cases/${id}/close-emi`, input),
+    },
+    calculatorContext: () => call<CalculatorContextDto>("GET", "/api/calculators/context"),
+    consents: {
+      list: () => call<ConsentDto[]>("GET", "/api/consents"),
+      set: (input: ConsentInput) => call<ConsentDto[]>("PUT", "/api/consents", input),
     },
     upcoming: (days = 30) => call<UpcomingDto[]>("GET", `/api/upcoming?days=${days}`),
     pushTokens: {

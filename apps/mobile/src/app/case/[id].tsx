@@ -6,6 +6,7 @@ import { deadlineText, fmtDate, orderStatusOptions } from "@/components/case";
 import { Chips } from "@/components/chips";
 import { Money } from "@/components/money";
 import { api, useLoad } from "@/lib/api";
+import { sharePdf, shareText } from "@/lib/share";
 import { colors, ui } from "@/lib/theme";
 
 const eventLabel: Record<(typeof caseEventTypes)[number], string> = {
@@ -210,6 +211,15 @@ export default function CaseDetail() {
           ))}
         </View>
       )}
+
+      <View style={[ui.row, { flexWrap: "wrap" }]}>
+        <Pressable style={ui.ghostButton} onPress={() => void run(async () => sharePdf(await api.exports.purchaseCase(id, "html")))}>
+          <Text style={{ color: colors.text }}>Share PDF</Text>
+        </Pressable>
+        <Pressable style={ui.ghostButton} onPress={() => void run(async () => shareText(`moneymania-case.csv`, await api.exports.purchaseCase(id, "csv"), "text/csv"))}>
+          <Text style={{ color: colors.text }}>Share CSV</Text>
+        </Pressable>
+      </View>
 
       <View style={[ui.row, { justifyContent: "space-between" }]}>
         <Pressable style={ui.ghostButton} onPress={() => void run(() => api.cases.update(id, { status: c.status === "open" ? "resolved" : "open" }))}>

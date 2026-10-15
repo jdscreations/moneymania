@@ -4,6 +4,7 @@ import { addDays, periodRange, todayIn, type Period } from "@moneymania/core";
 import { useState } from "react";
 import { EntryForm } from "@/components/entry-form";
 import { Button, Card, cx, ErrorText, Money } from "@/components/ui";
+import { Upcoming } from "@/components/upcoming";
 import { api, useLoad } from "@/lib/api";
 
 const step: Record<Period, number> = { day: 1, week: 7, month: 0 };
@@ -91,6 +92,8 @@ export default function Today() {
         ) : null}
         <ErrorText>{setup.error}</ErrorText>
       </Card>
+
+      <Upcoming />
 
       {s && s.expenseByCategory.length > 0 && (
         <Card>

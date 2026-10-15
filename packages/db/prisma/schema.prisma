@@ -35,6 +35,7 @@ model User {
   emis          Emi[]
   purchaseCases PurchaseCase[]
   reminders     Reminder[]
+  pushTokens    PushToken[]
   consents      Consent[]
 
   @@map("users")
@@ -109,10 +110,10 @@ model MoneyAccount {
   createdAt           DateTime         @default(now())
   updatedAt           DateTime         @updatedAt
 
-  transactions         Transaction[] @relation("TransactionAccount")
-  incomingTransfers    Transaction[] @relation("TransferDestination")
-  bills                Bill[]
-  emis                 Emi[]
+  transactions      Transaction[] @relation("TransactionAccount")
+  incomingTransfers Transaction[] @relation("TransferDestination")
+  bills             Bill[]
+  emis              Emi[]
 
   @@index([userId])
   @@map("money_accounts")
@@ -138,6 +139,7 @@ model Category {
 
   transactions Transaction[]
   budgets      Budget[]
+  bills        Bill[]
 
   @@index([userId])
   @@map("categories")
@@ -161,26 +163,26 @@ enum IncomeSource {
 }
 
 model Transaction {
-  id           String          @id @default(cuid())
-  userId       String
-  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  accountId    String
-  account      MoneyAccount    @relation("TransactionAccount", fields: [accountId], references: [id], onDelete: Cascade)
+  id                String          @id @default(cuid())
+  userId            String
+  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountId         String
+  account           MoneyAccount    @relation("TransactionAccount", fields: [accountId], references: [id], onDelete: Cascade)
   /// Destination account when kind is transfer.
   transferAccountId String?
-  transferAccount   MoneyAccount? @relation("TransferDestination", fields: [transferAccountId], references: [id], onDelete: Cascade)
-  categoryId   String?
-  category     Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  kind         TransactionKind
-  amountPaise  BigInt
-  occurredOn   DateTime        @db.Date
-  incomeSource IncomeSource?
-  note         String?
-  tags         String[]
-  orderId      String?
-  order        Order?          @relation(fields: [orderId], references: [id], onDelete: SetNull)
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
+  transferAccount   MoneyAccount?   @relation("TransferDestination", fields: [transferAccountId], references: [id], onDelete: Cascade)
+  categoryId        String?
+  category          Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  kind              TransactionKind
+  amountPaise       BigInt
+  occurredOn        DateTime        @db.Date
+  incomeSource      IncomeSource?
+  note              String?
+  tags              String[]
+  orderId           String?
+  order             Order?          @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
 
   @@index([userId, occurredOn])
   @@map("transactions")
@@ -202,20 +204,35 @@ model Budget {
 
 // ---------- Bills and EMIs ----------
 
+enum BillFrequency {
+  weekly
+  monthly
+  quarterly
+  half_yearly
+  yearly
+  once
+}
+
 model Bill {
-  id          String        @id @default(cuid())
-  userId      String
-  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name        String
-  amountPaise BigInt
-  accountId   String?
-  account     MoneyAccount? @relation(fields: [accountId], references: [id], onDelete: SetNull)
-  /// iCal RRULE, e.g. "FREQ=MONTHLY;BYMONTHDAY=5".
-  recurrence  String
-  nextDueOn   DateTime      @db.Date
-  autopay     Boolean       @default(false)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id               String        @id @default(cuid())
+  userId           String
+  user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name             String
+  amountPaise      BigInt
+  accountId        String?
+  account          MoneyAccount? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  categoryId       String?
+  category         Category?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  frequency        BillFrequency
+  /// Usual day of month, so a bill on the 31st returns to the 31st after short months.
+  dueDay           Int
+  nextDueOn        DateTime?     @db.Date
+  lastPaidOn       DateTime?     @db.Date
+  autopay          Boolean       @default(false)
+  remindDaysBefore Int           @default(3)
+  archivedAt       DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 
   @@index([userId, nextDueOn])
   @@map("bills")
@@ -242,12 +259,16 @@ model Emi {
   accountId          String?
   account            MoneyAccount? @relation(fields: [accountId], references: [id], onDelete: SetNull)
   kind               EmiKind
+  name               String
   lender             String
   principalPaise     BigInt
   annualRateBps      Int
   tenureMonths       Int
-  startOn            DateTime      @db.Date
+  /// Date of the first installment; the rest fall on the same day each month.
+  firstDueOn         DateTime      @db.Date
+  gstOnInterestBps   Int           @default(1800)
   processingFeePaise BigInt        @default(0)
+  remindDaysBefore   Int           @default(3)
   bankRuleId         String?
   bankRule           BankEmiRule?  @relation(fields: [bankRuleId], references: [id])
   status             EmiStatus     @default(active)
@@ -394,12 +415,27 @@ model Reminder {
   user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   subjectType ReminderSubject
   subjectId   String
-  remindOn    DateTime
+  /// The due date this reminder was about; one reminder per subject, due date and channel.
+  dueOn       DateTime        @db.Date
   channel     ReminderChannel
-  sentAt      DateTime?
+  sentAt      DateTime        @default(now())
 
-  @@index([remindOn, sentAt])
+  @@unique([subjectType, subjectId, dueOn, channel])
+  @@index([userId])
   @@map("reminders")
+}
+
+model PushToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  platform  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@map("push_tokens")
 }
 
 model Consent {

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Alert, Pressable, ScrollView, Text, View } from "react-native";
 import { Chips } from "@/components/chips";
 import { Money } from "@/components/money";
+import { Upcoming } from "@/components/upcoming";
 import { api, useLoad } from "@/lib/api";
 import { colors, ui } from "@/lib/theme";
 
@@ -98,6 +99,8 @@ export default function Today() {
             </Pressable>
           </View>
         )}
+
+        <Upcoming />
 
         {s && s.expenseByCategory.length > 0 && (
           <View style={ui.card}>

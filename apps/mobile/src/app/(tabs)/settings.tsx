@@ -1,4 +1,4 @@
-import { router } from "expo-router";
+import { Link, router } from "expo-router";
 import { Alert, Pressable, Text, View } from "react-native";
 import { authClient } from "@/lib/auth-client";
 import { colors, ui } from "@/lib/theme";
@@ -28,6 +28,11 @@ export default function Settings() {
   return (
     <View style={[ui.page, { flex: 1 }]}>
       <Text style={ui.body}>Signed in as {session?.user.email}</Text>
+      <Link href="/accounts" asChild>
+        <Pressable style={ui.ghostButton}>
+          <Text style={{ color: colors.text, textAlign: "center" }}>Accounts and balances</Text>
+        </Pressable>
+      </Link>
       <Pressable style={ui.button} onPress={signOut}>
         <Text style={ui.buttonText}>Sign out</Text>
       </Pressable>

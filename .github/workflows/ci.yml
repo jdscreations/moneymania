@@ -39,9 +39,9 @@ jobs:
       - name: API end-to-end tests
         working-directory: apps/web
         run: |
-          pnpm start -p 3000 > /tmp/web.log 2>&1 &
+          AUTH_RATE_LIMIT=off CRON_SECRET=ci-cron-secret pnpm start -p 3000 > /tmp/web.log 2>&1 &
           for i in $(seq 1 30); do curl -sf -o /dev/null http://localhost:3000 && break; sleep 1; done
-          E2E_BASE_URL=http://localhost:3000 pnpm test:e2e || (cat /tmp/web.log; exit 1)
+          CRON_SECRET=ci-cron-secret E2E_BASE_URL=http://localhost:3000 pnpm test:e2e || (cat /tmp/web.log; exit 1)
       - name: Bundle the mobile app for Android
         working-directory: apps/mobile
         run: npx expo export --platform android --output-dir /tmp/mobile-export

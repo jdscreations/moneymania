@@ -56,3 +56,26 @@ export function eachDay(from: IsoDate, to: IsoDate): IsoDate[] {
 export function monthKey(date: IsoDate): string {
   return date.slice(0, 7);
 }
+
+function daysInMonth(year: number, monthIndex: number): number {
+  return new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate();
+}
+
+/**
+ * Same day-of-month `months` later. When that month is shorter, the date clamps to its last day,
+ * so a bill on the 31st falls on 30 Nov and 28 or 29 Feb. Pass `anchorDay` to return to the 31st
+ * in longer months after a clamp.
+ */
+export function addMonths(date: IsoDate, months: number, anchorDay?: number): IsoDate {
+  const d = new Date(`${date}T00:00:00Z`);
+  const total = d.getUTCFullYear() * 12 + d.getUTCMonth() + months;
+  const year = Math.floor(total / 12);
+  const month = total - year * 12;
+  const day = Math.min(anchorDay ?? d.getUTCDate(), daysInMonth(year, month));
+  return new Date(Date.UTC(year, month, day)).toISOString().slice(0, 10);
+}
+
+/** Whole days from `from` to `to` (negative when `to` is earlier). */
+export function daysBetween(from: IsoDate, to: IsoDate): number {
+  return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000);
+}

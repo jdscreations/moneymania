@@ -1,3 +1,4 @@
+import { addMonths, type IsoDate } from "./dates";
 import { applyBps, assertPaise, roundHalfAway, type Bps, type Paise } from "./money";
 
 export interface EmiTerms {
@@ -82,5 +83,68 @@ export function summarizeEmi(terms: EmiTerms): EmiSummary {
     totalInterest,
     totalGst,
     totalPaid: terms.principal + totalInterest + totalGst,
+  };
+}
+
+/** Due date of each installment: the first on `firstDueOn`, then the same day each month. */
+export function installmentDueDates(firstDueOn: IsoDate, tenureMonths: number): IsoDate[] {
+  const anchor = Number(firstDueOn.slice(8, 10));
+  return Array.from({ length: tenureMonths }, (_, i) => addMonths(firstDueOn, i, anchor));
+}
+
+export type PrepaymentMode = "reduce_tenure" | "reduce_emi";
+
+export interface PrepaymentResult {
+  /** Balance left after the prepayment. */
+  balanceAfterPrepayment: Paise;
+  newEmi: Paise;
+  /** Installments left after the prepayment. */
+  newRemainingMonths: number;
+  /** Interest (plus GST on it) still to pay without and with the prepayment. */
+  remainingCostBefore: Paise;
+  remainingCostAfter: Paise;
+  saved: Paise;
+}
+
+/** Interest plus GST still to pay on the rows after `paidCount` installments. */
+function remainingCost(rows: Installment[], paidCount: number): Paise {
+  return rows.slice(paidCount).reduce((s, r) => s + r.interest + r.gst, 0);
+}
+
+/**
+ * What a part-prepayment right after installment `paidCount` saves. "reduce_tenure" keeps the EMI and
+ * finishes sooner; "reduce_emi" keeps the end date and lowers the EMI. Prepayment fees are not included.
+ */
+export function prepaymentWhatIf(terms: EmiTerms, paidCount: number, prepayment: Paise, mode: PrepaymentMode): PrepaymentResult {
+  assertPaise(prepayment, "prepayment");
+  const rows = emiSchedule(terms);
+  if (!Number.isInteger(paidCount) || paidCount < 0 || paidCount >= terms.tenureMonths) {
+    throw new RangeError("paidCount must be between 0 and tenureMonths - 1");
+  }
+  const balance = paidCount === 0 ? terms.principal : rows[paidCount - 1]!.balanceAfter;
+  if (prepayment <= 0 || prepayment >= balance) throw new RangeError("prepayment must be more than 0 and less than the balance");
+
+  const left = balance - prepayment;
+  const monthsLeft = terms.tenureMonths - paidCount;
+  const before = remainingCost(rows, paidCount);
+  const emi = monthlyEmi(terms);
+
+  let after: Installment[];
+  if (mode === "reduce_emi") {
+    after = emiSchedule({ ...terms, principal: left, tenureMonths: monthsLeft });
+  } else {
+    // Find the shortest tenure whose EMI does not exceed the current EMI.
+    let n = 1;
+    while (n < monthsLeft && monthlyEmi({ ...terms, principal: left, tenureMonths: n }) > emi) n++;
+    after = emiSchedule({ ...terms, principal: left, tenureMonths: n });
+  }
+  const afterCost = remainingCost(after, 0);
+  return {
+    balanceAfterPrepayment: left,
+    newEmi: after[0]!.emi,
+    newRemainingMonths: after.length,
+    remainingCostBefore: before,
+    remainingCostAfter: afterCost,
+    saved: before - afterCost,
   };
 }

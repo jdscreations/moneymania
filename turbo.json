@@ -6,7 +6,11 @@
     "BETTER_AUTH_URL",
     "GOOGLE_CLIENT_ID",
     "GOOGLE_CLIENT_SECRET",
-    "EXPO_PUBLIC_API_URL"
+    "EXPO_PUBLIC_API_URL",
+    "AUTH_RATE_LIMIT",
+    "CRON_SECRET",
+    "RESEND_API_KEY",
+    "REMINDER_FROM_EMAIL"
   ],
   "tasks": {
     "build": {

@@ -1,6 +1,6 @@
-import type { BudgetDto, CategoryDto, MoneyAccountDto, SummaryDto, TransactionDto } from "./api-types";
+import type { BillDto, BudgetDto, CategoryDto, EmiDetailDto, EmiDto, MoneyAccountDto, PrepaymentDto, SummaryDto, TransactionDto, UpcomingDto } from "./api-types";
 import type { IsoDate, Period } from "./dates";
-import type { BudgetInput, CategoryInput, MoneyAccountInput, TransactionInput } from "./schemas";
+import type { BillInput, BudgetInput, CategoryInput, EmiInput, MoneyAccountInput, PayBillInput, PayInstallmentInput, PrepaymentInput, TransactionInput } from "./schemas";
 
 export class ApiError extends Error {
   constructor(
@@ -56,6 +56,26 @@ export function createApiClient({ baseUrl, headers }: ApiClientOptions) {
       list: (month: string) => call<BudgetDto[]>("GET", `/api/budgets?month=${month}`),
       set: (input: BudgetInput) => call<BudgetDto>("PUT", "/api/budgets", input),
       remove: (id: string) => call<void>("DELETE", `/api/budgets/${id}`),
+    },
+    bills: {
+      list: () => call<BillDto[]>("GET", "/api/bills"),
+      create: (input: BillInput) => call<BillDto>("POST", "/api/bills", input),
+      update: (id: string, input: BillInput) => call<BillDto>("PATCH", `/api/bills/${id}`, input),
+      remove: (id: string) => call<void>("DELETE", `/api/bills/${id}`),
+      pay: (id: string, input: PayBillInput) => call<BillDto>("POST", `/api/bills/${id}/pay`, input),
+    },
+    emis: {
+      list: () => call<EmiDto[]>("GET", "/api/emis"),
+      get: (id: string) => call<EmiDetailDto>("GET", `/api/emis/${id}`),
+      create: (input: EmiInput) => call<EmiDetailDto>("POST", "/api/emis", input),
+      remove: (id: string) => call<void>("DELETE", `/api/emis/${id}`),
+      payInstallment: (id: string, number: number, input: PayInstallmentInput) =>
+        call<EmiDetailDto>("POST", `/api/emis/${id}/installments/${number}/pay`, input),
+      prepayment: (id: string, input: PrepaymentInput) => call<PrepaymentDto>("POST", `/api/emis/${id}/prepayment`, input),
+    },
+    upcoming: (days = 30) => call<UpcomingDto[]>("GET", `/api/upcoming?days=${days}`),
+    pushTokens: {
+      register: (token: string, platform: "ios" | "android" | "web") => call<void>("POST", "/api/push-tokens", { token, platform }),
     },
   };
 }

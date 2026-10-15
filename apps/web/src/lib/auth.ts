@@ -17,4 +17,6 @@ export const auth = betterAuth({
   // The mobile app talks to this same server; its deep-link scheme must be trusted.
   trustedOrigins: ["moneymania://", ...(process.env.EXTRA_TRUSTED_ORIGINS?.split(",") ?? [])],
   plugins: [expo()],
+  // Sign-in rate limiting stays on except in automated test runs, which sign up many users quickly.
+  rateLimit: { enabled: process.env.AUTH_RATE_LIMIT !== "off" },
 });

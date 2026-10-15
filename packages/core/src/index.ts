@@ -1,6 +1,7 @@
 export * from "./money";
 export * from "./emi";
 export * from "./dates";
+export * from "./bills";
 export * from "./schemas";
 export * from "./summary";
 export * from "./api-types";

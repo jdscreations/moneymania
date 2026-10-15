@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { billFrequencies } from "./bills";
 import { isIsoDate } from "./dates";
 
 const paise = z.number().int().safe();
@@ -56,4 +57,62 @@ export type BudgetInput = z.input<typeof budgetInput>;
 export const periodQuery = z.object({
   period: z.enum(["day", "week", "month"]).default("day"),
   date: isoDate,
+});
+
+export const billInput = z.object({
+  name: z.string().trim().min(1).max(60),
+  amountPaise: positivePaise,
+  frequency: z.enum(billFrequencies),
+  /** Next date this bill is due. */
+  nextDueOn: isoDate,
+  accountId: z.string().min(1).nullish(),
+  categoryId: z.string().min(1).nullish(),
+  autopay: z.boolean().default(false),
+  remindDaysBefore: z.number().int().min(0).max(30).default(3),
+});
+export type BillInput = z.input<typeof billInput>;
+
+export const payBillInput = z.object({
+  /** Also log the payment as spending from this account. */
+  accountId: z.string().min(1).nullish(),
+  paidOn: isoDate,
+  /** Amount actually paid, when it differs from the usual bill amount. */
+  amountPaise: positivePaise.optional(),
+});
+export type PayBillInput = z.input<typeof payBillInput>;
+
+export const emiKinds = ["card_merchant", "card_conversion", "loan", "bnpl"] as const;
+
+export const emiInput = z.object({
+  name: z.string().trim().min(1).max(60),
+  kind: z.enum(emiKinds),
+  lender: z.string().trim().min(1).max(60),
+  principalPaise: positivePaise,
+  annualRateBps: z.number().int().min(0).max(6000),
+  tenureMonths: z.number().int().min(1).max(360),
+  firstDueOn: isoDate,
+  gstOnInterestBps: z.number().int().min(0).max(2800).default(1800),
+  processingFeePaise: paise.min(0).default(0),
+  accountId: z.string().min(1).nullish(),
+  remindDaysBefore: z.number().int().min(0).max(30).default(3),
+  /** Installments already paid before adding the EMI to MoneyMania. */
+  alreadyPaid: z.number().int().min(0).default(0),
+});
+export type EmiInput = z.input<typeof emiInput>;
+
+export const payInstallmentInput = z.object({
+  accountId: z.string().min(1).nullish(),
+  paidOn: isoDate,
+});
+export type PayInstallmentInput = z.input<typeof payInstallmentInput>;
+
+export const prepaymentInput = z.object({
+  amountPaise: positivePaise,
+  mode: z.enum(["reduce_tenure", "reduce_emi"]),
+});
+export type PrepaymentInput = z.input<typeof prepaymentInput>;
+
+export const pushTokenInput = z.object({
+  token: z.string().min(10).max(200),
+  platform: z.enum(["ios", "android", "web"]),
 });

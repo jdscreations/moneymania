@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { installmentDueDates, emiSchedule } from "./emi";
-import { analyzeCase, disputeDeadline, type CaseAnalysisInput, type CaseOrder } from "./refund";
+import { analyzeCase, disputeDeadline, verdictCopy, type CaseAnalysisInput, type CaseOrder } from "./refund";
 
 // The founder's case: five Amazon orders in one SBI Card charge of ₹58,375.64 on 7 Oct 2026,
 // converted to a 12-month EMI at 17%, first billed on the 25 Oct statement.
@@ -71,5 +71,11 @@ describe("analyzeCase", () => {
 describe("disputeDeadline", () => {
   it("is 45 days after a 7 Oct charge for SBI", () => {
     expect(disputeDeadline("2026-10-07", 45)).toBe("2026-11-21");
+  });
+});
+
+describe("verdictCopy", () => {
+  it("names the saving for the founder's case", () => {
+    expect(verdictCopy(analyzeCase(base), "SBI Card").headline).toBe("Close the EMI early to save ₹4,797.82");
   });
 });

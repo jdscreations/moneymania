@@ -1,6 +1,6 @@
 import { addDays, daysBetween, type IsoDate } from "./dates";
 import { emiSchedule, interestForDays, type EmiTerms } from "./emi";
-import { applyBps, type Bps, type Paise } from "./money";
+import { applyBps, formatINR, type Bps, type Paise } from "./money";
 
 export const orderStatuses = ["kept", "cancelled", "return_requested", "returned"] as const;
 export type OrderStatus = (typeof orderStatuses)[number];
@@ -122,4 +122,28 @@ export function analyzeCase(input: CaseAnalysisInput): CaseAnalysis {
 /** Last day to raise a dispute with the bank, counted from the charge date. */
 export function disputeDeadline(chargedOn: IsoDate, windowDays: number): IsoDate {
   return addDays(chargedOn, windowDays);
+}
+
+/** One-line verdict and its reason, shared by the web and mobile apps. */
+export function verdictCopy(a: CaseAnalysis, lender = "the bank"): { headline: string; detail: string } {
+  const f = a.foreclosure;
+  switch (a.verdict) {
+    case "cancel":
+      return {
+        headline: "Ask the bank to cancel this EMI",
+        detail: `Every order was refunded. ${lender} cancels a merchant EMI on a full refund, so ask for the EMI to be cancelled and the interest and fees reversed.`,
+      };
+    case "foreclose":
+      return {
+        headline: `Close the EMI early to save ${formatINR(a.saving)}`,
+        detail: `Keeping it costs ${formatINR(a.keepCost)} more in interest and GST. Closing it today costs ${formatINR(f.cost)} in fees, interest and GST, and that grows about ${formatINR(a.weeklyRise)} a week until the next statement.`,
+      };
+    case "keep":
+      return {
+        headline: "Keeping the EMI is cheaper for now",
+        detail: `Closing it today would cost ${formatINR(f.cost)}, against ${formatINR(a.keepCost)} of interest and GST still to come.`,
+      };
+    case "closed":
+      return { headline: "This EMI is closed", detail: "Nothing more is owed on it." };
+  }
 }

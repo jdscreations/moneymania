@@ -1,9 +1,11 @@
 import { formatINR, orderUpdate } from "@moneymania/core";
 import { prisma } from "@moneymania/db";
 import { caseDetail, logEvent, ownCase } from "@/server/cases";
-import { fromIsoDate, handle, HttpError, parseBody, requireUserId, toIsoDate } from "@/server/http";
+import { fromIsoDate, handle, HttpError, parseBody, requireUserId } from "@/server/http";
 
 type Ctx = RouteContext<"/api/cases/[id]/orders/[orderId]">;
+
+const fmtDay = (d: Date) => d.toLocaleDateString("en-IN", { timeZone: "UTC", day: "numeric", month: "short", year: "numeric" });
 
 const statusNote = { kept: "kept", cancelled: "cancelled", return_requested: "return requested", returned: "returned" } as const;
 
@@ -35,7 +37,7 @@ export const PATCH = handle(async (req: Request, ctx: Ctx) => {
   const changes: string[] = [];
   if (after.status !== before.status) changes.push(`marked ${statusNote[after.status]}`);
   if (after.refundPaise !== before.refundPaise) changes.push(`refund set to ${formatINR(Number(after.refundPaise))}`);
-  if (after.refundPostedOn && !before.refundPostedOn) changes.push(`refund of ${formatINR(Number(after.refundPaise))} posted on ${toIsoDate(after.refundPostedOn)}`);
+  if (after.refundPostedOn && !before.refundPostedOn) changes.push(`refund of ${formatINR(Number(after.refundPaise))} posted on ${fmtDay(after.refundPostedOn)}`);
   if (!after.refundPostedOn && before.refundPostedOn) changes.push("refund no longer marked as posted");
   if (changes.length > 0) await logEvent(id, "note", `${after.item}: ${changes.join(", ")}.`);
   return Response.json(await caseDetail(userId, id));

@@ -10,6 +10,7 @@ const nav = [
   { href: "/home", label: "Today" },
   { href: "/bills", label: "Bills" },
   { href: "/emis", label: "EMIs" },
+  { href: "/refunds", label: "Refunds" },
   { href: "/accounts", label: "Accounts" },
   { href: "/budgets", label: "Budgets" },
   { href: "/settings", label: "Settings" },

@@ -3,7 +3,10 @@ import type { DueItem } from "./upcoming";
 
 const when = (i: DueItem) => (i.daysLeft < 0 ? `overdue by ${-i.daysLeft} day${i.daysLeft === -1 ? "" : "s"}` : i.daysLeft === 0 ? "due today" : `due in ${i.daysLeft} day${i.daysLeft === 1 ? "" : "s"}`);
 
-export const reminderLine = (i: DueItem) => `${i.name}: ${formatINR(i.amountPaise)}, ${when(i)}${i.autopay ? " (autopay)" : ""}`;
+export const reminderLine = (i: DueItem) =>
+  i.type === "dispute"
+    ? `${i.name}: ${i.daysLeft === 0 ? "today" : `in ${i.daysLeft} day${i.daysLeft === 1 ? "" : "s"}`} (${formatINR(i.amountPaise)} charge)`
+    : `${i.name}: ${formatINR(i.amountPaise)}, ${when(i)}${i.autopay ? " (autopay)" : ""}`;
 
 /** Email through Resend when RESEND_API_KEY is set; otherwise logs and reports not sent. */
 export async function sendEmail(to: string, subject: string, text: string): Promise<boolean> {

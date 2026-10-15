@@ -7,6 +7,7 @@ export const termsOf = (e: Emi): EmiTerms => ({
   annualRateBps: e.annualRateBps,
   tenureMonths: e.tenureMonths,
   gstOnInterestBps: e.gstOnInterestBps,
+  brokenPeriodDays: e.brokenPeriodDays,
 });
 
 /** Installment rows to store for a new EMI, built from the shared schedule math. */

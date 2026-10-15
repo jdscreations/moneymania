@@ -4,11 +4,13 @@ import { fromIsoDate, handle, HttpError } from "@/server/http";
 import { reminderLine, sendEmail, sendPush } from "@/server/notify";
 import { dueItems, type DueItem } from "@/server/upcoming";
 
+const subjectOf = { bill: "bill", emi: "emi", dispute: "purchase_case" } as const;
+
 /** Claim a reminder slot; false if this item was already reminded on this channel for this due date. */
 async function claim(item: DueItem, channel: "email" | "push") {
   try {
     await prisma.reminder.create({
-      data: { userId: item.userId, subjectType: item.type, subjectId: item.id, dueOn: fromIsoDate(item.dueOn), channel },
+      data: { userId: item.userId, subjectType: subjectOf[item.type], subjectId: item.id, dueOn: fromIsoDate(item.dueOn), channel },
     });
     return true;
   } catch (err) {
@@ -18,7 +20,7 @@ async function claim(item: DueItem, channel: "email" | "push") {
 }
 
 /**
- * Daily job (Vercel Cron, 9:00 IST). Sends one email and one push per user listing bills and EMIs
+ * Daily job (Vercel Cron, 9:00 IST). Sends one email and one push per user listing bills, EMIs and dispute deadlines
  * inside their reminder window, at most once per item, due date and channel.
  */
 export const GET = handle(async (req: Request) => {

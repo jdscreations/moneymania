@@ -8,6 +8,11 @@ export interface EmiTerms {
   tenureMonths: number;
   /** GST charged on the interest part of each installment (18% = 1800). Defaults to 0. */
   gstOnInterestBps?: Bps;
+  /**
+   * Days between the purchase and the statement that bills the first installment. Card EMIs charge
+   * interest for this broken period on top of the first installment. Defaults to 0.
+   */
+  brokenPeriodDays?: number;
 }
 
 export interface Installment {
@@ -30,6 +35,12 @@ function validate({ principal, annualRateBps, tenureMonths }: EmiTerms) {
   if (annualRateBps < 0) throw new RangeError("annualRateBps cannot be negative");
 }
 
+/** Interest for `days` days at the monthly rate, counting a month as 30 days (the way Indian card issuers bill it). */
+export function interestForDays(balance: Paise, annualRateBps: Bps, days: number): Paise {
+  if (days <= 0) return 0;
+  return roundHalfAway((balance * annualRateBps * days) / 10_000 / 12 / 30);
+}
+
 /** Monthly installment on a reducing balance: P·r(1+r)^n / ((1+r)^n − 1), rounded to the paisa. */
 export function monthlyEmi(terms: EmiTerms): Paise {
   validate(terms);
@@ -48,9 +59,10 @@ export function emiSchedule(terms: EmiTerms): Installment[] {
   const rows: Installment[] = [];
   let balance = terms.principal;
   for (let n = 1; n <= terms.tenureMonths; n++) {
-    const interest = roundHalfAway(balance * r);
+    const broken = n === 1 ? interestForDays(terms.principal, terms.annualRateBps, terms.brokenPeriodDays ?? 0) : 0;
+    const interest = roundHalfAway(balance * r) + broken;
     const isLast = n === terms.tenureMonths;
-    const principalPart = isLast ? balance : Math.min(emi - interest, balance);
+    const principalPart = isLast ? balance : Math.min(emi - (interest - broken), balance);
     const thisEmi = principalPart + interest;
     const gst = applyBps(interest, gstBps);
     balance -= principalPart;
@@ -74,6 +86,7 @@ export interface EmiSummary {
   totalPaid: Paise;
 }
 
+/** Schedule totals. `emi` is the regular installment; a broken-period charge makes the first one larger. */
 export function summarizeEmi(terms: EmiTerms): EmiSummary {
   const rows = emiSchedule(terms);
   const totalInterest = rows.reduce((s, r) => s + r.interest, 0);
@@ -129,14 +142,16 @@ export function prepaymentWhatIf(terms: EmiTerms, paidCount: number, prepayment:
   const before = remainingCost(rows, paidCount);
   const emi = monthlyEmi(terms);
 
+  // The rescheduled loan starts after the first statement, so it has no broken period.
+  const rest = { ...terms, brokenPeriodDays: 0 };
   let after: Installment[];
   if (mode === "reduce_emi") {
-    after = emiSchedule({ ...terms, principal: left, tenureMonths: monthsLeft });
+    after = emiSchedule({ ...rest, principal: left, tenureMonths: monthsLeft });
   } else {
     // Find the shortest tenure whose EMI does not exceed the current EMI.
     let n = 1;
-    while (n < monthsLeft && monthlyEmi({ ...terms, principal: left, tenureMonths: n }) > emi) n++;
-    after = emiSchedule({ ...terms, principal: left, tenureMonths: n });
+    while (n < monthsLeft && monthlyEmi({ ...rest, principal: left, tenureMonths: n }) > emi) n++;
+    after = emiSchedule({ ...rest, principal: left, tenureMonths: n });
   }
   const afterCost = remainingCost(after, 0);
   return {

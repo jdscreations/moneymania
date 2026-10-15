@@ -1,6 +1,6 @@
-import type { BillDto, BudgetDto, CategoryDto, EmiDetailDto, EmiDto, MoneyAccountDto, PrepaymentDto, SummaryDto, TransactionDto, UpcomingDto } from "./api-types";
+import type { BillDto, CaseDetailDto, CaseDto, BudgetDto, CategoryDto, EmiDetailDto, EmiDto, MoneyAccountDto, PrepaymentDto, SummaryDto, TransactionDto, UpcomingDto } from "./api-types";
 import type { IsoDate, Period } from "./dates";
-import type { BillInput, BudgetInput, CategoryInput, EmiInput, MoneyAccountInput, PayBillInput, PayInstallmentInput, PrepaymentInput, TransactionInput } from "./schemas";
+import type { BillInput, CaseEventInput, CaseInput, CaseUpdate, CloseEmiInput, OrderInput, OrderUpdate, BudgetInput, CategoryInput, EmiInput, MoneyAccountInput, PayBillInput, PayInstallmentInput, PrepaymentInput, TransactionInput } from "./schemas";
 
 export class ApiError extends Error {
   constructor(
@@ -72,6 +72,18 @@ export function createApiClient({ baseUrl, headers }: ApiClientOptions) {
       payInstallment: (id: string, number: number, input: PayInstallmentInput) =>
         call<EmiDetailDto>("POST", `/api/emis/${id}/installments/${number}/pay`, input),
       prepayment: (id: string, input: PrepaymentInput) => call<PrepaymentDto>("POST", `/api/emis/${id}/prepayment`, input),
+    },
+    cases: {
+      list: () => call<CaseDto[]>("GET", "/api/cases"),
+      get: (id: string) => call<CaseDetailDto>("GET", `/api/cases/${id}`),
+      create: (input: CaseInput) => call<CaseDetailDto>("POST", "/api/cases", input),
+      update: (id: string, input: CaseUpdate) => call<CaseDetailDto>("PATCH", `/api/cases/${id}`, input),
+      remove: (id: string) => call<void>("DELETE", `/api/cases/${id}`),
+      addOrder: (id: string, input: OrderInput) => call<CaseDetailDto>("POST", `/api/cases/${id}/orders`, input),
+      updateOrder: (id: string, orderId: string, input: OrderUpdate) => call<CaseDetailDto>("PATCH", `/api/cases/${id}/orders/${orderId}`, input),
+      removeOrder: (id: string, orderId: string) => call<CaseDetailDto>("DELETE", `/api/cases/${id}/orders/${orderId}`),
+      addEvent: (id: string, input: CaseEventInput) => call<CaseDetailDto>("POST", `/api/cases/${id}/events`, input),
+      closeEmi: (id: string, input: CloseEmiInput) => call<CaseDetailDto>("POST", `/api/cases/${id}/close-emi`, input),
     },
     upcoming: (days = 30) => call<UpcomingDto[]>("GET", `/api/upcoming?days=${days}`),
     pushTokens: {

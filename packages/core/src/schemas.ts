@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { billFrequencies } from "./bills";
-import { isIsoDate } from "./dates";
+import { daysBetween, isIsoDate } from "./dates";
+import { orderStatuses } from "./refund";
 
 const paise = z.number().int().safe();
 const positivePaise = paise.positive();
@@ -116,3 +117,75 @@ export const pushTokenInput = z.object({
   token: z.string().min(10).max(200),
   platform: z.enum(["ios", "android", "web"]),
 });
+
+export const merchants = ["amazon_in", "flipkart", "other"] as const;
+export const caseEventTypes = ["call", "email", "sr_number", "promise", "escalation", "note"] as const;
+
+const orderFields = {
+  merchantOrderId: z.string().trim().max(40).nullish(),
+  item: z.string().trim().min(1).max(80),
+  amountPaise: positivePaise,
+  status: z.enum(orderStatuses),
+  /** Refund expected or received. */
+  refundPaise: paise.min(0),
+  /** Date the refund showed up on the card statement. */
+  refundPostedOn: isoDate.nullish(),
+};
+
+export const orderInput = z.object({
+  ...orderFields,
+  status: orderFields.status.default("kept"),
+  refundPaise: orderFields.refundPaise.default(0),
+});
+export type OrderInput = z.input<typeof orderInput>;
+/** Only the fields sent change; no defaults, so a partial update never resets the status or refund. */
+export const orderUpdate = z.object(orderFields).partial();
+export type OrderUpdate = z.input<typeof orderUpdate>;
+
+export const caseInput = z
+  .object({
+    title: z.string().trim().max(80).default(""),
+    merchant: z.enum(merchants),
+    /** "sbi" uses SBI Card's merchant EMI rules; anything else needs the fee and dispute window. */
+    bankCode: z.string().trim().min(1).max(20),
+    lender: z.string().trim().min(1).max(60).optional(),
+    accountId: z.string().min(1).nullish(),
+    chargePaise: positivePaise,
+    chargedOn: isoDate,
+    /** Statement date that bills the first installment. */
+    firstStatementOn: isoDate,
+    annualRateBps: z.number().int().min(0).max(6000),
+    tenureMonths: z.number().int().min(1).max(60),
+    gstOnInterestBps: z.number().int().min(0).max(2800).default(1800),
+    processingFeePaise: paise.min(0).default(0),
+    foreclosureFeeBps: z.number().int().min(0).max(1000).nullish(),
+    disputeWindowDays: z.number().int().min(1).max(540).nullish(),
+    orders: z.array(orderInput).min(1).max(30),
+  })
+  .refine((c) => daysBetween(c.chargedOn, c.firstStatementOn) >= 0 && daysBetween(c.chargedOn, c.firstStatementOn) <= 62, {
+    message: "The first statement must fall within two months after the charge",
+    path: ["firstStatementOn"],
+  });
+export type CaseInput = z.input<typeof caseInput>;
+
+export const caseUpdate = z.object({
+  title: z.string().trim().max(80).optional(),
+  status: z.enum(["open", "resolved"]).optional(),
+  disputeDeadlineOn: isoDate.nullish(),
+});
+export type CaseUpdate = z.input<typeof caseUpdate>;
+
+export const caseEventInput = z.object({
+  type: z.enum(caseEventTypes),
+  reference: z.string().trim().max(60).nullish(),
+  note: z.string().trim().max(500).nullish(),
+  on: isoDate.optional(),
+});
+export type CaseEventInput = z.input<typeof caseEventInput>;
+
+export const closeEmiInput = z.object({
+  outcome: z.enum(["foreclosed", "cancelled"]),
+  on: isoDate,
+  reference: z.string().trim().max(60).nullish(),
+});
+export type CloseEmiInput = z.input<typeof closeEmiInput>;

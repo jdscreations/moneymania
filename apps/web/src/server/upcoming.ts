@@ -7,17 +7,23 @@ export interface DueItem extends UpcomingDto {
   remindDaysBefore: number;
 }
 
+/** Dispute deadlines are reminded a week ahead, so there is time to call the bank. */
+const DISPUTE_REMIND_DAYS = 7;
+
 /**
- * Bills and unpaid EMI installments due between `today` (including anything overdue) and `today + days`,
+ * Bills, unpaid EMI installments and dispute deadlines on open purchase cases due between `today` (including anything overdue) and `today + days`,
  * for one user or, when `userId` is omitted, for everyone (used by the reminder job).
  */
 export async function dueItems(today: IsoDate, days: number, userId?: string): Promise<DueItem[]> {
   const until = fromIsoDate(addDays(today, days));
-  const [bills, installments] = await Promise.all([
+  const [bills, installments, cases] = await Promise.all([
     prisma.bill.findMany({ where: { userId, archivedAt: null, nextDueOn: { not: null, lte: until } } }),
     prisma.emiInstallment.findMany({
       where: { paidOn: null, dueOn: { lte: until }, emi: { userId, status: "active" } },
       include: { emi: true },
+    }),
+    prisma.purchaseCase.findMany({
+      where: { userId, status: "open", disputeDeadlineOn: { not: null, gte: fromIsoDate(today), lte: until } },
     }),
   ]);
 
@@ -48,6 +54,20 @@ export async function dueItems(today: IsoDate, days: number, userId?: string): P
         daysLeft: daysBetween(today, dueOn),
         autopay: false,
         remindDaysBefore: i.emi.remindDaysBefore,
+      };
+    }),
+    ...cases.map((c) => {
+      const dueOn = toIsoDate(c.disputeDeadlineOn!);
+      return {
+        type: "dispute" as const,
+        id: c.id,
+        userId: c.userId,
+        name: `Last day to dispute: ${c.title}`,
+        dueOn,
+        amountPaise: Number(c.chargePaise),
+        daysLeft: daysBetween(today, dueOn),
+        autopay: false,
+        remindDaysBefore: DISPUTE_REMIND_DAYS,
       };
     }),
   ];

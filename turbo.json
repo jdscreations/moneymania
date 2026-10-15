@@ -10,7 +10,9 @@
     "AUTH_RATE_LIMIT",
     "CRON_SECRET",
     "RESEND_API_KEY",
-    "REMINDER_FROM_EMAIL"
+    "REMINDER_FROM_EMAIL",
+    "DIRECT_URL",
+    "NEXT_PUBLIC_SUPPORT_EMAIL"
   ],
   "tasks": {
     "build": {

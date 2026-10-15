@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Alert, Pressable, ScrollView, Switch, Text, View } from "react-native";
 import { api, useLoad } from "@/lib/api";
 import { authClient } from "@/lib/auth-client";
+import { openLegal } from "@/lib/legal";
 import { registerForReminders } from "@/lib/push";
 import { shareText, sharePdf } from "@/lib/share";
 import { colors, ui } from "@/lib/theme";
@@ -110,6 +111,10 @@ export default function Settings() {
         <Pressable style={[ui.ghostButton, busy && { opacity: 0.5 }]} disabled={busy} onPress={exportAll}>
           <Text style={{ color: colors.text, textAlign: "center" }}>Download all my data</Text>
         </Pressable>
+        <View>
+          <Row label="Privacy policy" onPress={() => void openLegal("/privacy")} />
+          <Row label="Terms of use" onPress={() => void openLegal("/terms")} />
+        </View>
       </View>
       {error && <Text style={ui.error}>{error}</Text>}
 

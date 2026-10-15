@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useRefreshConsents } from "@/components/app-shell";
@@ -52,6 +53,11 @@ export default function Consent() {
             <li key={p}>{p}</li>
           ))}
         </ul>
+        <p className="text-sm text-zinc-500">
+          Read the full{" "}
+          <Link href="/privacy" className="text-emerald-700 underline dark:text-emerald-400">privacy policy</Link> and{" "}
+          <Link href="/terms" className="text-emerald-700 underline dark:text-emerald-400">terms of use</Link>.
+        </p>
       </Card>
       <Card className="flex flex-col gap-3">
         <h2 className="text-sm font-semibold">Reminders</h2>

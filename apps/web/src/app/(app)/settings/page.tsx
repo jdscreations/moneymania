@@ -1,6 +1,7 @@
 "use client";
 
 import { addDays, exportPaths, periodRange, todayIn, type ConsentPurpose } from "@moneymania/core";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button, Card, ErrorText, Input, Label } from "@/components/ui";
@@ -88,6 +89,9 @@ export default function Settings() {
           <a className={linkClass} href={exportPaths.everything}>Download all my data</a>
           <Button variant="danger" onClick={deleteAccount}>Delete account and data</Button>
         </div>
+        <p className="text-sm text-zinc-500">
+          <Link href="/privacy" className="underline">Privacy policy</Link> · <Link href="/terms" className="underline">Terms of use</Link>
+        </p>
       </Card>
     </>
   );

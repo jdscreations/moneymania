@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Pressable, ScrollView, Switch, Text, View } from "react-native";
 import { api } from "@/lib/api";
 import { authClient } from "@/lib/auth-client";
+import { openLegal } from "@/lib/legal";
 import { colors, ui } from "@/lib/theme";
 
 const promises = [
@@ -47,6 +48,17 @@ export default function Consent() {
             • {p}
           </Text>
         ))}
+        <Text style={ui.small}>
+          Read the full{" "}
+          <Text style={{ color: colors.brand }} onPress={() => void openLegal("/privacy")}>
+            privacy policy
+          </Text>{" "}
+          and{" "}
+          <Text style={{ color: colors.brand }} onPress={() => void openLegal("/terms")}>
+            terms of use
+          </Text>
+          .
+        </Text>
       </View>
       <View style={[ui.card, { gap: 12 }]}>
         <Text style={ui.section}>Reminders</Text>

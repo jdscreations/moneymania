@@ -1,6 +1,6 @@
 "use client";
 
-import { caseEventTypes, rupeesToPaise, todayIn, verdictCopy, type CaseEventInput, type CaseOrderDto, type OrderStatus } from "@moneymania/core";
+import { caseEventTypes, exportPaths, rupeesToPaise, todayIn, verdictCopy, type CaseEventInput, type CaseOrderDto, type OrderStatus } from "@moneymania/core";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
@@ -102,7 +102,9 @@ export default function CaseDetail() {
             {deadlineText(c.disputeDaysLeft, c.disputeDeadlineOn)}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <a className="rounded-lg border border-zinc-300 px-4 py-2 text-sm hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-900" href={exportPaths.purchaseCase(id, "html")} target="_blank" rel="noreferrer">PDF report</a>
+          <a className="rounded-lg border border-zinc-300 px-4 py-2 text-sm hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-900" href={exportPaths.purchaseCase(id, "csv")}>CSV</a>
           {c.status === "open" ? (
             <Button variant="ghost" onClick={() => run(() => api.cases.update(id, { status: "resolved" }))}>Mark resolved</Button>
           ) : (

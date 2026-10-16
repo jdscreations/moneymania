@@ -1,0 +1,42 @@
+name: Mobile build
+
+# Started by hand from the Actions tab. Needs the EXPO_TOKEN repository secret and the Expo project linked (eas init).
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: preview (installable test build) or production (store build)
+        type: choice
+        options: [preview, production]
+        default: preview
+      platform:
+        type: choice
+        options: [android, ios, all]
+        default: android
+      submit:
+        description: Send production builds to Play internal testing / TestFlight
+        type: boolean
+        default: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - run: pnpm install --frozen-lockfile
+      - run: >-
+          eas build --non-interactive --no-wait
+          --profile ${{ inputs.profile }} --platform ${{ inputs.platform }}
+          ${{ inputs.submit && inputs.profile == 'production' && '--auto-submit' || '' }}

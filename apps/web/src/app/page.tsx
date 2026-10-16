@@ -14,6 +14,11 @@ export default function Landing() {
           Get started
         </Link>
       </div>
+      <nav className="flex gap-4 text-sm text-zinc-500">
+        <Link href="/privacy" className="hover:underline">Privacy</Link>
+        <Link href="/terms" className="hover:underline">Terms</Link>
+        <Link href="/delete-account" className="hover:underline">Delete account</Link>
+      </nav>
     </main>
   );
 }

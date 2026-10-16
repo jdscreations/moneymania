@@ -1,4 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "buildCommand": "pnpm --filter @moneymania/db generate && pnpm --filter @moneymania/db migrate:deploy && pnpm --filter @moneymania/web build",
   "crons": [{ "path": "/api/cron/reminders", "schedule": "30 3 * * *" }]
 }
